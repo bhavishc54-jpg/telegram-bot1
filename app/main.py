@@ -15,6 +15,7 @@ from app.handlers.broadcast import handlers as broadcast_handlers
 from app.handlers.links import handlers as link_handlers
 from app.handlers.subscriptions import handlers as subscription_handlers
 from app.handlers.user import handlers as user_handlers
+from app.middleware.access import handler as access_guard_handler
 from app.middleware.rate_limit import CooldownRateLimiter
 from app.utils.logging import configure_logging
 
@@ -22,7 +23,8 @@ logger = logging.getLogger(__name__)
 
 
 async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-    logger.error("Unhandled update error: %s", type(context.error).__name__, exc_info=context.error)
+    # Log only the exception type. Third-party error messages can contain request details.
+    logger.error("Unhandled update error: %s", type(context.error).__name__)
     if isinstance(update, Update) and update.effective_message:
         await update.effective_message.reply_text("Something went wrong. Please try again later.")
 
@@ -52,6 +54,7 @@ def build_application(settings: Settings) -> Application:
             "rate_limiter": CooldownRateLimiter(settings.request_cooldown_seconds),
         }
     )
+    application.add_handler(access_guard_handler(), group=-100)
     for handler in user_handlers():
         application.add_handler(handler)
     for handler in broadcast_handlers():

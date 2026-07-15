@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from sqlalchemy.ext.asyncio import (
@@ -63,6 +64,7 @@ async def initialize_database(
         await session.commit()
 
 
+@asynccontextmanager
 async def session_scope(
     session_factory: async_sessionmaker[AsyncSession],
 ) -> AsyncIterator[AsyncSession]:

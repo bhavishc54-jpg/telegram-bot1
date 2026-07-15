@@ -24,10 +24,12 @@ logs/*
 !logs/.gitkeep
 tmp/
 temp/
+!data/tmp/
+data/tmp/*
+!data/tmp/.gitkeep
 
 # Editors and operating systems
 .idea/
 .vscode/
 .DS_Store
 Thumbs.db
-

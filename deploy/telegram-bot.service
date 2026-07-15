@@ -1,0 +1,22 @@
+[Unit]
+Description=DiskWala validation Telegram bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=telegrambot
+Group=telegrambot
+WorkingDirectory=/opt/telegram-bot
+EnvironmentFile=/opt/telegram-bot/.env
+ExecStart=/opt/telegram-bot/.venv/bin/python -m app.main
+Restart=on-failure
+RestartSec=5
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/telegram-bot/data /opt/telegram-bot/logs
+
+[Install]
+WantedBy=multi-user.target
+
