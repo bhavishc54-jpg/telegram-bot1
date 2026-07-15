@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from telegram import User as TelegramUser
 
 from app.models import BotSetting, SubscriptionPlan, User, UserRole, utcnow
+from app.services.subscription_service import refresh_expired_subscription
 
 
 async def get_or_create_user(
@@ -44,6 +45,7 @@ async def get_setting(session: AsyncSession, key: str, default: str = "") -> str
 
 async def check_and_consume_daily_request(session: AsyncSession, user: User) -> tuple[bool, int]:
     """Consume one daily request when the user's configured plan allows it."""
+    await refresh_expired_subscription(session, user)
     if user.usage_date != date.today():
         user.daily_usage = 0
         user.usage_date = date.today()

@@ -10,6 +10,7 @@ from telegram.ext import Application, ApplicationBuilder, ContextTypes
 from app.config import ConfigurationError, Settings
 from app.database import create_engine_and_session, initialize_database
 from app.handlers.links import handlers as link_handlers
+from app.handlers.subscriptions import handlers as subscription_handlers
 from app.handlers.user import handlers as user_handlers
 from app.middleware.rate_limit import CooldownRateLimiter
 from app.utils.logging import configure_logging
@@ -51,6 +52,8 @@ def build_application(settings: Settings) -> Application:
     for handler in user_handlers():
         application.add_handler(handler)
     for handler in link_handlers():
+        application.add_handler(handler)
+    for handler in subscription_handlers():
         application.add_handler(handler)
     application.add_error_handler(on_error)
     return application

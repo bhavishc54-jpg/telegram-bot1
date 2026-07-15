@@ -10,6 +10,7 @@ from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes
 from app.config import Settings
 from app.keyboards.user import main_menu_keyboard
 from app.models import SubscriptionPlan
+from app.services.subscription_service import refresh_expired_subscription
 from app.services.user_service import get_or_create_user, get_setting
 
 
@@ -49,6 +50,8 @@ async def account(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     settings, session_factory = _dependencies(context)
     async with session_factory() as session:
         user = await get_or_create_user(session, update.effective_user, settings.owner_user_id)
+        if await refresh_expired_subscription(session, user):
+            await session.commit()
         limit_key = (
             "premium_daily_limit" if user.plan is SubscriptionPlan.PREMIUM else "free_daily_limit"
         )
