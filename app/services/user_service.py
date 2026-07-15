@@ -7,7 +7,7 @@ from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
 from telegram import User as TelegramUser
 
-from app.models import BotSetting, User, UserRole, utcnow
+from app.models import BotSetting, SubscriptionPlan, User, UserRole, utcnow
 
 
 async def get_or_create_user(
@@ -40,3 +40,26 @@ async def get_or_create_user(
 async def get_setting(session: AsyncSession, key: str, default: str = "") -> str:
     setting = await session.get(BotSetting, key)
     return setting.value if setting else default
+
+
+async def check_and_consume_daily_request(session: AsyncSession, user: User) -> tuple[bool, int]:
+    """Consume one daily request when the user's configured plan allows it."""
+    if user.usage_date != date.today():
+        user.daily_usage = 0
+        user.usage_date = date.today()
+    limit_key = (
+        "premium_daily_limit" if user.plan is SubscriptionPlan.PREMIUM else "free_daily_limit"
+    )
+    raw_limit = await get_setting(
+        session, limit_key, "100" if user.plan is SubscriptionPlan.PREMIUM else "5"
+    )
+    try:
+        limit = max(1, int(raw_limit))
+    except ValueError:
+        limit = 100 if user.plan is SubscriptionPlan.PREMIUM else 5
+    if user.daily_usage >= limit:
+        return False, limit
+    user.daily_usage += 1
+    user.total_requests += 1
+    await session.flush()
+    return True, limit
