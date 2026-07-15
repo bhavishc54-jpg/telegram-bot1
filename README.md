@@ -18,7 +18,10 @@ official API or a legally permitted public direct-download method.
 - Offline domain allowlist; submitted URLs are never fetched
 - Per-user anti-spam cooldown and daily Free/Premium limits
 - User accounts, referrals fields, roles, usage, bans, and subscription expiry
-- Payment-provider interface with no real gateway and no stored card data
+- Telegram Stars invoices with verified, idempotent fulfillment
+- Paddle sandbox/live checkout creation and signed FastAPI webhooks
+- Shared credits, Premium fulfillment, saved-link resumption, and payment audit records
+- Alembic migrations for safe upgrades of existing SQLite databases
 - Owner-only mutations and limited admin access based on Telegram numeric IDs
 - Inline owner/admin menu, audit log, editable settings, stats, and maintenance mode
 - Sponsored-message creation, editing, activation, deactivation, deletion, caps, and dates
@@ -33,12 +36,12 @@ official API or a legally permitted public direct-download method.
 
 - DiskWala file downloading
 - A DiskWala scraper, login bypass, ad bypass, or protection bypass
-- Telegram Stars or another real payment provider
+- Production Paddle catalog IDs, credentials, and notification destination
+- Live payment testing with your own Telegram and Paddle accounts
 - Automatic review of every possible harmful advertisement
 
 The extension point for a future permitted downloader is in
-`app/services/link_validator.py`. The payment interface is in
-`app/services/subscription_service.py`.
+`app/services/link_validator.py`. Payment fulfillment never downloads a file.
 
 ## Project structure
 
@@ -128,6 +131,15 @@ DATABASE_URL=sqlite:///data/bot.db
 FREE_DAILY_LIMIT=5
 PREMIUM_DAILY_LIMIT=100
 LOG_LEVEL=INFO
+
+ENABLE_TELEGRAM_STARS=true
+ENABLE_PADDLE=true
+PADDLE_ENV=sandbox
+PADDLE_API_KEY=your_private_sandbox_api_key
+PADDLE_CLIENT_TOKEN=your_sandbox_client_side_token
+PADDLE_WEBHOOK_SECRET=your_notification_destination_secret
+BASE_URL=http://localhost:8000
+FRONTEND_URL=http://localhost:8000
 ```
 
 `.env` is ignored by Git. Never paste your token into source code, a GitHub
@@ -158,7 +170,17 @@ python -m app.main
 ```
 
 The first run creates `data/bot.db` and the default editable settings. Send
-`/start` to the bot in Telegram.
+`/start` to the bot in Telegram. It also starts FastAPI on port `8000` when
+`ENABLE_PADDLE=true`.
+
+Run migrations manually after pulling an update, before starting the bot:
+
+```powershell
+.\.venv\Scripts\alembic.exe upgrade head
+```
+
+Startup also applies pending migrations automatically. Back up `data/bot.db`
+before every production migration.
 
 To stop it, return to PowerShell and press `Ctrl+C`. The application closes its
 database engine during shutdown.
@@ -174,6 +196,9 @@ User commands:
 /account
 /plans
 /support
+/buy
+/credits
+/paymentstatus
 ```
 
 Send a complete public link such as `https://diskwala.com/example`. The bot will
@@ -199,6 +224,14 @@ Owner and limited-admin commands:
 /maintenance on|off
 /settings
 /settings KEY VALUE
+/payments
+/products
+/products enable|disable PRODUCT_CODE
+/products configure PRODUCT_CODE pro_ID pri_ID
+/givecredits USER_ID AMOUNT
+/removecredits USER_ID AMOUNT
+/finduser USER_ID
+/userpayments USER_ID
 ```
 
 Use `/ads activate AD_ID`, `/ads deactivate AD_ID`, or
@@ -335,7 +368,136 @@ git pull --ff-only
 sudo docker compose up -d --build
 ```
 
-## 15. Safe future downloader work
+## 15. How Telegram Stars works
+
+Telegram Stars are used for small credit packs inside Telegram:
+
+1. The user opens `/buy` and chooses a Stars product.
+2. The bot creates a pending internal payment with a random order ID and invoice payload.
+3. Telegram shows an invoice using currency `XTR`.
+4. The bot validates the pre-checkout query but does not add access yet.
+5. Credits are added only after Telegram sends `successful_payment`.
+6. Duplicate updates cannot add credits twice.
+7. The latest unexpired pending link is automatically validated after fulfillment.
+
+To test, set `ENABLE_TELEGRAM_STARS=true`, run the bot, and choose a Stars item
+from `/buy`. Telegram provides a dedicated test environment for Stars payments.
+Use that environment while developing; do not assume clicking the Pay button is
+proof of payment. The bot always waits for `successful_payment`.
+
+Telegram's rules require Telegram Stars for digital goods and services sold
+inside Telegram. Before enabling external credit sales in production, confirm
+that your exact hybrid flow complies with the current Telegram and Paddle terms.
+
+## 16. How Paddle works
+
+Paddle is prepared for larger packs and monthly/yearly Premium products:
+
+1. The bot creates an internal pending payment.
+2. The server calls Paddle's transaction API using `PADDLE_API_KEY`.
+3. The transaction contains the internal order ID, Telegram user ID, and product code.
+4. The bot sends a **Pay with Paddle** button.
+5. The checkout page uses `PADDLE_CLIENT_TOKEN` with Paddle.js.
+6. The success page does not add credits.
+7. Only a valid signed `transaction.completed` webhook can fulfill the payment.
+8. Product ID, price ID, amount, currency, user, order, and transaction are rechecked.
+9. Duplicate webhooks are recorded and cannot add access twice.
+
+### Create a Paddle sandbox account
+
+Create a Paddle Sandbox account and use the sandbox dashboard while developing.
+Sandbox and live workspaces have separate API keys, tokens, products, prices,
+and webhook destinations.
+
+In **Developer Tools → Authentication**:
+
+- Create a server-side API key and paste it after `PADDLE_API_KEY=` in `.env`.
+- Create a client-side token and paste it after `PADDLE_CLIENT_TOKEN=` in `.env`.
+- Never put the API key in browser code. The client-side token is the credential intended for Paddle.js.
+
+### Create Paddle products and prices
+
+Create these catalog entries in the sandbox dashboard:
+
+- Starter credit pack
+- 100 credits
+- 500 credits
+- Monthly Premium recurring price
+- Yearly Premium recurring price
+
+Copy each `pro_...` product ID and `pri_...` price ID, then configure and enable
+the matching bot product from the owner account:
+
+```text
+/products
+/products configure paddle_starter pro_YOUR_ID pri_YOUR_ID
+/products enable paddle_starter
+```
+
+Repeat for `paddle_100`, `paddle_500`, `paddle_premium_monthly`, and
+`paddle_premium_yearly`. Paddle products are inactive by default until both IDs
+are configured.
+
+### Create the Paddle webhook destination
+
+Paddle does not create the webhook URL for you.
+The app creates the route `/webhooks/paddle`.
+After deployment, your domain makes it a real URL:
+`https://api.yourdomain.com/webhooks/paddle`
+
+In Paddle Sandbox, open **Developer Tools → Notifications**, create a URL
+notification destination, and subscribe at least to:
+
+- `transaction.completed`
+- `transaction.payment_failed`
+- `transaction.canceled`
+- Relevant subscription created/activated/updated/canceled/past-due events
+
+Copy that destination's endpoint secret into:
+
+```env
+PADDLE_WEBHOOK_SECRET=pdl_ntfset_your_secret
+```
+
+The webhook verifier uses the exact raw request body, the `Paddle-Signature`
+header, HMAC-SHA256, timing-safe comparison, and timestamp tolerance.
+
+### Test Paddle locally
+
+1. Keep `PADDLE_ENV=sandbox`.
+2. Put sandbox credentials in `.env`.
+3. Set the Paddle default payment link to your checkout page. Paddle Sandbox may use localhost.
+4. Run `python -m app.main` and check `http://localhost:8000/health`.
+5. Use `/buy` and open **Pay with Paddle**.
+6. Use Paddle's sandbox test card details, not a real card.
+7. Paddle cannot send an internet webhook to plain localhost. Use an HTTPS tunnel for testing, for example:
+   `https://your-tunnel.example/webhooks/paddle`.
+8. Put that public URL in the Paddle sandbox notification destination.
+9. Confirm `/credits` changes only after the signed webhook arrives.
+
+The checkout page may use `FRONTEND_URL=http://localhost:8000` in sandbox. For a
+tunnel or deployment, set both URLs to the appropriate HTTPS origin:
+
+```env
+BASE_URL=https://api.yourdomain.com
+FRONTEND_URL=https://api.yourdomain.com
+```
+
+### Switch Paddle from sandbox to live
+
+Do this only after sandbox tests pass:
+
+1. Create separate live products and prices.
+2. Create a live API key, live client-side token, and live notification destination.
+3. Replace all sandbox IDs and credentials in `.env`.
+4. Set `PADDLE_ENV=live`.
+5. Set `BASE_URL` and `FRONTEND_URL` to HTTPS URLs.
+6. Configure the live `pro_...` and `pri_...` IDs with `/products configure`.
+7. Send a small real test purchase and verify the payment table and credit balance.
+
+Never commit `.env`. API keys and webhook secrets must remain server-side.
+
+## 17. Safe future downloader work
 
 Do not add scraping or bypass code. Before enabling downloads, confirm in writing
 that DiskWala provides an official API or a legally permitted public direct-file
@@ -346,4 +508,3 @@ available if the provider is unavailable.
 ## License
 
 MIT. See `LICENSE`.
-

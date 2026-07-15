@@ -15,5 +15,5 @@ COPY scripts ./scripts
 RUN mkdir -p data/backups data/tmp logs && chown -R bot:bot /app
 
 USER bot
+EXPOSE 8000
 CMD ["python", "-m", "app.main"]
-

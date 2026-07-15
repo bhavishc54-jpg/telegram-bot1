@@ -22,6 +22,10 @@ def admin_menu_keyboard(owner: bool) -> InlineKeyboardMarkup:
                     InlineKeyboardButton("📢 Ads", callback_data="admin:ads"),
                 ],
                 [
+                    InlineKeyboardButton("💳 Payments", callback_data="admin:payments"),
+                    InlineKeyboardButton("🛍 Products", callback_data="admin:products"),
+                ],
+                [
                     InlineKeyboardButton("⚙️ Settings", callback_data="admin:settings"),
                     InlineKeyboardButton("🛠 Maintenance", callback_data="admin:maintenance"),
                 ],

@@ -65,6 +65,7 @@ async def account(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         f"Name: {update.effective_user.mention_html()}\n"
         f"User ID: <code>{user.telegram_id}</code>\n"
         f"Plan: {user.plan.value.title()}\n"
+        f"Credits: {user.credits}\n"
         f"Daily usage: {user.daily_usage}/{limit}\n"
         f"Subscription expiry: {expiry}"
     )
@@ -85,7 +86,8 @@ async def plans(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "• Normal priority\n\n"
         f"<b>{premium_name} 💎</b>\n• {premium_limit} validations per day\n"
         f"• No sponsored messages\n• Priority processing\n• Price: {price}\n\n"
-        "Payments are not connected yet. No card information is collected."
+        "Use /buy to see currently enabled purchase options. Card information is handled by "
+        "the payment provider and is never stored by this bot."
     )
     await update.effective_message.reply_text(text, parse_mode=ParseMode.HTML)
 

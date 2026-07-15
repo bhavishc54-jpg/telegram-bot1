@@ -6,4 +6,6 @@
 - The validator is offline and allowlist-based. It never opens a submitted URL.
 - Downloading must remain disabled until an official API or legally permitted public method exists.
 - Payment implementations must never store card data or provider credentials in this database.
-
+- Telegram Stars are fulfilled only from `successful_payment` updates.
+- Paddle access is fulfilled only after raw-body signature verification and strict order checks.
+- Payment status claims and processed-event uniqueness prevent duplicate crediting.

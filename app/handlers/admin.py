@@ -366,6 +366,16 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await query.edit_message_text(
             f"Use /{action} to open this workflow.", reply_markup=back_cancel_keyboard()
         )
+    elif action == "payments":
+        await query.edit_message_text(
+            "Use /payments for payment statistics or /userpayments USER_ID for history.",
+            reply_markup=back_cancel_keyboard(),
+        )
+    elif action == "products":
+        await query.edit_message_text(
+            "Use /products to view products. Owner configuration commands are shown there.",
+            reply_markup=back_cancel_keyboard(),
+        )
     elif action == "logs":
         async with session_factory() as session:
             logs = list(

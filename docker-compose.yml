@@ -4,7 +4,10 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      API_HOST: 0.0.0.0
+    ports:
+      - "8000:8000"
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
-

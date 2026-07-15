@@ -8,7 +8,7 @@ from app.models import Base, BotSetting
 
 
 @pytest_asyncio.fixture
-async def session() -> AsyncIterator[AsyncSession]:
+async def session_factory():
     engine = create_async_engine(
         "sqlite+aiosqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -17,7 +17,13 @@ async def session() -> AsyncIterator[AsyncSession]:
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
     factory = async_sessionmaker(engine, expire_on_commit=False)
-    async with factory() as database_session:
+    yield factory
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def session(session_factory) -> AsyncIterator[AsyncSession]:
+    async with session_factory() as database_session:
         database_session.add_all(
             [
                 BotSetting(key="free_daily_limit", value="2"),
@@ -26,4 +32,3 @@ async def session() -> AsyncIterator[AsyncSession]:
         )
         await database_session.commit()
         yield database_session
-    await engine.dispose()

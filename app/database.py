@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -14,13 +15,13 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.config import Settings
-from app.models import Base, BotSetting
+from app.models import Base, BotSetting, PaymentProvider, Product
 
 DEFAULT_SETTINGS = {
     "welcome_message": "Welcome! Send me a public DiskWala link and I will validate it safely.",
     "help_message": (
         "Send a complete https://diskwala.com link to validate it.\n\n"
-        "Commands: /start, /help, /status, /account, /plans, /support"
+        "Commands: /start, /help, /status, /account, /plans, /buy, /credits, /support"
     ),
     "support_username": "",
     "free_daily_limit": "5",
@@ -31,6 +32,84 @@ DEFAULT_SETTINGS = {
     "premium_plan_name": "Premium",
     "premium_price_text": "Coming soon",
 }
+
+DEFAULT_PRODUCTS = (
+    {
+        "product_code": "stars_10",
+        "name": "Stars 10 credits",
+        "description": "10 link-validation credits",
+        "provider": PaymentProvider.TELEGRAM_STARS,
+        "credits": 10,
+        "stars_price": 10,
+        "currency": "XTR",
+        "is_active": True,
+    },
+    {
+        "product_code": "stars_50",
+        "name": "Stars 50 credits",
+        "description": "50 link-validation credits",
+        "provider": PaymentProvider.TELEGRAM_STARS,
+        "credits": 50,
+        "stars_price": 45,
+        "currency": "XTR",
+        "is_active": True,
+    },
+    {
+        "product_code": "stars_100",
+        "name": "Stars 100 credits",
+        "description": "100 link-validation credits",
+        "provider": PaymentProvider.TELEGRAM_STARS,
+        "credits": 100,
+        "stars_price": 80,
+        "currency": "XTR",
+        "is_active": True,
+    },
+    {
+        "product_code": "paddle_starter",
+        "name": "Paddle starter pack",
+        "description": "Starter credit pack through Paddle",
+        "provider": PaymentProvider.PADDLE,
+        "credits": 25,
+        "currency": "USD",
+        "is_active": False,
+    },
+    {
+        "product_code": "paddle_100",
+        "name": "Paddle 100 credits",
+        "description": "100 link-validation credits",
+        "provider": PaymentProvider.PADDLE,
+        "credits": 100,
+        "currency": "USD",
+        "is_active": False,
+    },
+    {
+        "product_code": "paddle_500",
+        "name": "Paddle 500 credits",
+        "description": "500 link-validation credits",
+        "provider": PaymentProvider.PADDLE,
+        "credits": 500,
+        "currency": "USD",
+        "is_active": False,
+    },
+    {
+        "product_code": "paddle_premium_monthly",
+        "name": "Paddle monthly premium",
+        "description": "30 days of Premium access",
+        "provider": PaymentProvider.PADDLE,
+        "premium_duration_days": 30,
+        "currency": "USD",
+        "is_active": False,
+    },
+    {
+        "product_code": "paddle_premium_yearly",
+        "name": "Paddle yearly premium",
+        "description": "365 days of Premium access",
+        "provider": PaymentProvider.PADDLE,
+        "premium_duration_days": 365,
+        "currency": "USD",
+        "is_active": False,
+    },
+)
 
 
 def create_engine_and_session(
@@ -61,6 +140,12 @@ async def initialize_database(
         for key, value in values.items():
             if await session.get(BotSetting, key) is None:
                 session.add(BotSetting(key=key, value=value))
+        for values in DEFAULT_PRODUCTS:
+            existing = await session.scalar(
+                select(Product).where(Product.product_code == values["product_code"])
+            )
+            if existing is None:
+                session.add(Product(**values))
         await session.commit()
 
 
