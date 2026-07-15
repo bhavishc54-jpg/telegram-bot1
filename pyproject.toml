@@ -1,0 +1,21 @@
+[project]
+name = "telegram-bot"
+version = "0.1.0"
+description = "A modular Telegram bot with safe DiskWala link validation."
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+exclude = ["data", "logs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC"]
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
+
