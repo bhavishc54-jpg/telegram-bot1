@@ -11,6 +11,7 @@ from telegram.ext import ContextTypes, MessageHandler, filters
 from app.config import Settings
 from app.middleware.rate_limit import CooldownRateLimiter
 from app.models import LinkRequest
+from app.services.ad_service import get_eligible_ad, send_sponsored_message
 from app.services.link_validator import ValidationOnlyDownloader, validate_diskwala_url
 from app.services.user_service import (
     check_and_consume_daily_request,
@@ -81,6 +82,11 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     await checking_message.edit_text(
         f"✅ {result.message}\n\n{download.message}", disable_web_page_preview=True
     )
+    async with session_factory() as session:
+        current_user = await session.get(type(user), user.telegram_id)
+        ad = await get_eligible_ad(session, current_user) if current_user else None
+    if ad:
+        await send_sponsored_message(update.effective_message, ad)
 
 
 def handlers() -> list[object]:
