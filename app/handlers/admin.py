@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+import re
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from telegram import Update
@@ -10,11 +13,13 @@ from telegram.ext import CommandHandler, ContextTypes
 from app.config import Settings
 from app.models import (
     BotSetting,
+    BroadcastDelivery,
     BroadcastJob,
     SourceLink,
     SourcePost,
     SourcePostStatus,
     Subscriber,
+    utcnow,
 )
 from app.repositories.source_posts import retry_post
 from app.services.manual_broadcast import queue_manual_broadcast
@@ -185,6 +190,80 @@ async def paused_setting(session: AsyncSession) -> bool:
     return bool(setting and setting.value.lower() == "true")
 
 
+
+async def delete_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not await _authorized(update, context) or not update.effective_message:
+        return
+
+    message = update.effective_message
+    replied = message.reply_to_message
+    if replied is None:
+        await message.reply_text(
+            "Reply to a broadcast success message or one of your received broadcast posts with /delete."
+        )
+        return
+
+    _, session_factory = _dependencies(context)
+    job_id: int | None = None
+
+    if replied.text:
+        match = re.search(r"Broadcast Job ID:\s*(\d+)", replied.text)
+        if match:
+            job_id = int(match.group(1))
+
+    async with session_factory() as session:
+        if job_id is None:
+            rows = list(
+                await session.scalars(
+                    select(BroadcastDelivery).where(
+                        BroadcastDelivery.subscriber_id == message.chat_id
+                    )
+                )
+            )
+            for row in rows:
+                try:
+                    ids = [int(x) for x in json.loads(row.message_ids or "[]")]
+                except (ValueError, TypeError, json.JSONDecodeError):
+                    ids = []
+                if replied.message_id in ids:
+                    job_id = row.broadcast_job_id
+                    break
+
+        if job_id is None:
+            await message.reply_text("Could not identify that broadcast.")
+            return
+
+        deliveries = list(
+            await session.scalars(
+                select(BroadcastDelivery).where(
+                    BroadcastDelivery.broadcast_job_id == job_id
+                )
+            )
+        )
+
+        deleted = 0
+        for delivery in deliveries:
+            try:
+                ids = [int(x) for x in json.loads(delivery.message_ids or "[]")]
+            except (ValueError, TypeError, json.JSONDecodeError):
+                ids = []
+            for message_id in ids:
+                try:
+                    await context.bot.delete_message(
+                        chat_id=delivery.subscriber_id,
+                        message_id=message_id,
+                    )
+                    deleted += 1
+                except Exception:
+                    pass
+            delivery.deleted_at = delivery.deleted_at or utcnow()
+
+        await session.commit()
+
+    await message.reply_text(
+        f"\u2705 Broadcast Job {job_id} deleted from {deleted} stored message copies."
+    )
+
 def handlers() -> list[object]:
     return [
         CommandHandler("stats", stats),
@@ -193,4 +272,5 @@ def handlers() -> list[object]:
         CommandHandler("broadcast", broadcast),
         CommandHandler("pause", pause),
         CommandHandler("resume", resume),
+        CommandHandler("delete", delete_broadcast),
     ]

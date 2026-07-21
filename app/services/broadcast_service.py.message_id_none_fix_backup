@@ -124,7 +124,7 @@ async def deliver_job(
                 sent_time = utcnow()
                 delivery.sent_at = sent_time
                 delivery.message_ids = json.dumps(message_ids)
-                delivery.expires_at = sent_time + timedelta(minutes=30)
+                delivery.expires_at = sent_time + timedelta(hours=16)
                 sent += 1
                 terminal_log("BROADCAST SENT")
             elif status is DeliveryStatus.BLOCKED:
@@ -165,7 +165,6 @@ async def _send_parts(
     parts: list[str],
 ) -> tuple[DeliveryStatus, str | None, list[int]]:
     sent_message_ids: list[int] = []
-
     for part in parts:
         try:
             sent_message = await bot.send_message(
@@ -174,10 +173,7 @@ async def _send_parts(
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True,
             )
-            message_id = getattr(sent_message, "message_id", None)
-            if message_id is not None:
-                sent_message_ids.append(int(message_id))
-
+            sent_message_ids.append(sent_message.message_id)
         except RetryAfter as exc:
             await asyncio.sleep(float(exc.retry_after) + 0.5)
             try:
@@ -187,19 +183,13 @@ async def _send_parts(
                     parse_mode=ParseMode.HTML,
                     disable_web_page_preview=True,
                 )
-                message_id = getattr(sent_message, "message_id", None)
-                if message_id is not None:
-                    sent_message_ids.append(int(message_id))
-
+                sent_message_ids.append(sent_message.message_id)
             except Forbidden as retry_forbidden:
                 return DeliveryStatus.BLOCKED, type(retry_forbidden).__name__, sent_message_ids
             except TelegramError as retry_error:
                 return DeliveryStatus.FAILED, type(retry_error).__name__, sent_message_ids
-
         except Forbidden as exc:
             return DeliveryStatus.BLOCKED, type(exc).__name__, sent_message_ids
         except TelegramError as exc:
             return DeliveryStatus.FAILED, type(exc).__name__, sent_message_ids
-
     return DeliveryStatus.SENT, None, sent_message_ids
-

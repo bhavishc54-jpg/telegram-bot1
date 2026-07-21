@@ -19,6 +19,7 @@ from app.services.diskwala_client import DiskWalaClient
 from app.utils.logging import configure_logging
 from app.utils.terminal import terminal_log
 from app.workers.queue_worker import QueueWorker
+from app.workers.delete_worker import DeleteWorker
 
 logger = logging.getLogger(__name__)
 
@@ -62,8 +63,12 @@ def build_application(settings: Settings) -> Application:
             )
         worker = QueueWorker(application.bot, session_factory, settings, diskwala_client)
         worker_task = asyncio.create_task(worker.run(), name="queue-worker")
+        delete_worker = DeleteWorker(application.bot, session_factory)
+        delete_worker_task = asyncio.create_task(delete_worker.run(), name="delete-worker")
         application.bot_data["queue_worker"] = worker
         application.bot_data["queue_worker_task"] = worker_task
+        application.bot_data["delete_worker"] = delete_worker
+        application.bot_data["delete_worker_task"] = delete_worker_task
         if settings.app_mode == "polling":
             terminal_log(
                 "BOT STARTED",
@@ -79,10 +84,15 @@ def build_application(settings: Settings) -> Application:
     async def post_shutdown(application: Application) -> None:
         worker: QueueWorker | None = application.bot_data.get("queue_worker")
         worker_task: asyncio.Task | None = application.bot_data.get("queue_worker_task")
+        delete_worker: DeleteWorker | None = application.bot_data.get("delete_worker")
+        delete_worker_task: asyncio.Task | None = application.bot_data.get("delete_worker_task")
         if worker is not None:
             worker.stop()
-        if worker_task is not None:
-            await asyncio.wait([worker_task], timeout=5)
+        if delete_worker is not None:
+            delete_worker.stop()
+        tasks = [task for task in (worker_task, delete_worker_task) if task is not None]
+        if tasks:
+            await asyncio.wait(tasks, timeout=5)
         await diskwala_client.close()
         await engine.dispose()
         logger.info("Bot shutdown complete.")

@@ -165,4 +165,33 @@ class BroadcastDelivery(Base):
     )
     attempt_count: Mapped[int] = mapped_column(Integer, default=0)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    message_ids: Mapped[str] = mapped_column(Text, default="[]")
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+class PrivateRelay(Base):
+    __tablename__ = "private_relays"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    user_message_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    admin_header_message_id: Mapped[int] = mapped_column(Integer, nullable=False, unique=True, index=True)
+    admin_copy_message_id: Mapped[int] = mapped_column(Integer, nullable=False, unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    replied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ScheduledDeletion(Base):
+    __tablename__ = "scheduled_deletions"
+    __table_args__ = (
+        UniqueConstraint("chat_id", "message_id", name="uq_scheduled_deletion_chat_message"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    message_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    delete_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(64), default="generic")
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+

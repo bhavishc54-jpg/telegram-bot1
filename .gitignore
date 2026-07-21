@@ -1,38 +1,53 @@
-# Secrets
+﻿# Secret configuration
 .env
 .env.*
 !.env.example
-*.pem
-*.key
-credentials.json
-*.session
-*.session-journal
-data/telethon_sessions/
 
-# Python
+# Python environment and cache
+.venv/
+venv/
+env/
 __pycache__/
 *.py[cod]
-.venv*/
-venv/
-.pytest_cache/
-.ruff_cache/
-.coverage
-htmlcov/
+*.pyo
 
-# Runtime data
-data/*.db
-data/*.db-*
-data/backups/
-logs/*
-!logs/.gitkeep
-tmp/
-temp/
-!data/tmp/
-data/tmp/*
-!data/tmp/.gitkeep
+# Telegram and Telethon sessions
+*.session
+*.session-journal
+*.session-shm
+*.session-wal
 
-# Editors and operating systems
-.idea/
+# Databases and runtime data
+*.db
+*.sqlite
+*.sqlite3
+data/
+storage/
+
+# Logs
+*.log
+logs/
+bot-startup.log
+
+# Temporary and backup files
+*.backup*
+*.bak
+*.before_*
+*.autodelete_backup
+*.admin_header_backup*
+*.contact_backup*
+*.emoji_fix*
+*.reply_backup
+*.safe_emoji_backup*
+Telegram-Bot-Code-Review*
+Telegram-Bot-Backup-*
+
+# Editor and Windows files
 .vscode/
+.idea/
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# Generated archives
+*.zip

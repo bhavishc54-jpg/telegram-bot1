@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -18,7 +17,6 @@ from app.models import (
     LinkStatus,
     SourcePost,
     SourcePostStatus,
-    ScheduledDeletion,
     utcnow,
 )
 from app.repositories.source_posts import links_for_post, next_due_posts
@@ -236,42 +234,6 @@ class QueueWorker:
                         )
             await session.commit()
 
-        if result.sent:
-            delete_at = utcnow() + timedelta(minutes=30)
-            async with self._session_factory() as session:
-                for post_id in post_ids:
-                    post = await session.get(SourcePost, post_id)
-                    if post is None:
-                        continue
-                    existing = await session.scalar(
-                        select(ScheduledDeletion).where(
-                            ScheduledDeletion.chat_id == post.source_chat_id,
-                            ScheduledDeletion.message_id == post.source_message_id,
-                        )
-                    )
-                    if existing is None:
-                        session.add(
-                            ScheduledDeletion(
-                                chat_id=post.source_chat_id,
-                                message_id=post.source_message_id,
-                                delete_at=delete_at,
-                                kind="source_channel_post",
-                            )
-                        )
-                    else:
-                        existing.delete_at = delete_at
-                        existing.deleted_at = None
-                await session.commit()
-
-            await _notify_admin_timer(
-                self._bot,
-                self._settings.admin_user_id,
-                result.sent,
-                result.failed,
-                result.blocked,
-                job_id,
-            )
-
         if result.failed:
             error = (
                 "broadcast_delivery_failed "
@@ -329,35 +291,6 @@ async def set_broadcasts_paused(session: AsyncSession, paused: bool) -> None:
         session.add(BotSetting(key="broadcast_paused", value=str(paused).lower()))
     else:
         setting.value = str(paused).lower()
-
-
-
-async def _notify_admin_timer(
-    bot: Bot,
-    admin_user_id: int,
-    sent: int,
-    failed: int,
-    blocked: int,
-    job_id: int,
-) -> None:
-    expires_utc = utcnow() + timedelta(minutes=30)
-    expires_ist = expires_utc + timedelta(hours=5, minutes=30)
-
-    text = (
-        "\u2705 Broadcast sent successfully.\n\n"
-        f"Broadcast Job ID: {job_id}\n"
-        "\u23f1 Auto-delete timer: 30 minutes\n"
-        f"\U0001F5D1 Estimated delete time: {expires_ist:%Y-%m-%d %H:%M} IST\n\n"
-        f"Sent: {sent}\n"
-        f"Blocked: {blocked}\n"
-        f"Failed: {failed}\n\n"
-        "Reply to this message with /delete to remove this broadcast immediately."
-    )
-
-    try:
-        await bot.send_message(chat_id=admin_user_id, text=text)
-    except Exception:
-        logger.warning("Could not notify admin about broadcast timer.")
 
 
 async def _notify_admin(bot: Bot, admin_user_id: int, post_id: int, error: str) -> None:
