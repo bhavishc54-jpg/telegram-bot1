@@ -5,11 +5,14 @@
 *.pem
 *.key
 credentials.json
+*.session
+*.session-journal
+data/telethon_sessions/
 
 # Python
 __pycache__/
 *.py[cod]
-.venv/
+.venv*/
 venv/
 .pytest_cache/
 .ruff_cache/

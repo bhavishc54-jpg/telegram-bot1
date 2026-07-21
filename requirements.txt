@@ -1,8 +1,10 @@
 python-telegram-bot==22.8
 SQLAlchemy==2.0.51
+greenlet>=3.2.4,<4.0
 aiosqlite==0.22.1
 python-dotenv==1.2.2
 FastAPI==0.139.0
 uvicorn==0.51.0
 httpx==0.28.1
 alembic==1.18.5
+Telethon>=1.36,<2.0
