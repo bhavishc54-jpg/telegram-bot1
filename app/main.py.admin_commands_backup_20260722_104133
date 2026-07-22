@@ -5,13 +5,6 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from telegram import (
-    BotCommand,
-    BotCommandScopeAllGroupChats,
-    BotCommandScopeAllPrivateChats,
-    BotCommandScopeChat,
-    BotCommandScopeDefault,
-)
 from telegram.constants import ChatType
 from telegram.ext import Application, ApplicationBuilder, ContextTypes
 
@@ -57,33 +50,6 @@ def build_application(settings: Settings) -> Application:
 
     async def post_init(application: Application) -> None:
         await asyncio.to_thread(run_migrations, settings.database_url)
-
-        # Remove the command menu from normal users and groups.
-        await application.bot.delete_my_commands(
-            scope=BotCommandScopeDefault()
-        )
-        await application.bot.delete_my_commands(
-            scope=BotCommandScopeAllPrivateChats()
-        )
-        await application.bot.delete_my_commands(
-            scope=BotCommandScopeAllGroupChats()
-        )
-
-        # Show the full command panel only inside the admin's private chat.
-        await application.bot.set_my_commands(
-            [
-                BotCommand("stats", "View bot and subscriber statistics"),
-                BotCommand("queue", "View pending posts"),
-                BotCommand("retry", "Retry a failed post"),
-                BotCommand("broadcast", "Send a manual broadcast"),
-                BotCommand("pause", "Pause broadcasts"),
-                BotCommand("resume", "Resume broadcasts"),
-                BotCommand("delete", "Delete a selected broadcast"),
-            ],
-            scope=BotCommandScopeChat(
-                chat_id=settings.admin_user_id
-            ),
-        )
         await initialize_database(engine, session_factory, settings)
         if settings.app_mode == "polling":
             await application.bot.delete_webhook(drop_pending_updates=False)
