@@ -340,13 +340,13 @@ async def _notify_admin_timer(
     blocked: int,
     job_id: int,
 ) -> None:
-    expires_utc = utcnow() + timedelta(minutes=30)
+    expires_utc = utcnow() + timedelta(hours=16)
     expires_ist = expires_utc + timedelta(hours=5, minutes=30)
 
     text = (
         "\u2705 Broadcast sent successfully.\n\n"
         f"Broadcast Job ID: {job_id}\n"
-        "\u23f1 Auto-delete timer: 30 minutes\n"
+        "\u23f1 Auto-delete timer: 16 hours\n"
         f"\U0001F5D1 Estimated delete time: {expires_ist:%Y-%m-%d %H:%M} IST\n\n"
         f"Sent: {sent}\n"
         f"Blocked: {blocked}\n"

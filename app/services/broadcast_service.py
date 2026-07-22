@@ -124,7 +124,7 @@ async def deliver_job(
                 sent_time = utcnow()
                 delivery.sent_at = sent_time
                 delivery.message_ids = json.dumps(message_ids)
-                delivery.expires_at = sent_time + timedelta(minutes=30)
+                delivery.expires_at = sent_time + timedelta(hours=16)
                 sent += 1
                 terminal_log("BROADCAST SENT")
             elif status is DeliveryStatus.BLOCKED:
