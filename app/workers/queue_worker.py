@@ -1,4 +1,4 @@
-"""Persistent FIFO worker for due source-channel posts."""
+﻿"""Persistent FIFO worker for due source-channel posts."""
 
 from __future__ import annotations
 
@@ -237,7 +237,7 @@ class QueueWorker:
             await session.commit()
 
         if result.sent:
-            delete_at = utcnow() + timedelta(minutes=30)
+            delete_at = utcnow() + timedelta(hours=16)
             async with self._session_factory() as session:
                 for post_id in post_ids:
                     post = await session.get(SourcePost, post_id)
@@ -372,3 +372,4 @@ async def _notify_admin(bot: Bot, admin_user_id: int, post_id: int, error: str) 
 
 def _sanitize_error(exc: Exception) -> str:
     return type(exc).__name__ if not str(exc) else str(exc)[:500]
+
