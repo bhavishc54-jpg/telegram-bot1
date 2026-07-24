@@ -1,4 +1,4 @@
-﻿"""Persistent FIFO worker for due source-channel posts."""
+"""Persistent FIFO worker for due source-channel posts."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 class QueueWorker:
-    BATCH_WAIT_SECONDS = 45
+    BATCH_WAIT_SECONDS = 120
     BATCH_LIMIT = 50
 
     def __init__(

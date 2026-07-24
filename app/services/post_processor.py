@@ -173,7 +173,6 @@ def build_final_messages(
                 "\U0001F4E5 Download Link",
                 "",
                 _escape_html_text(links[0]),
-                "",
                 footer,
             ]
         )
@@ -224,7 +223,7 @@ def build_final_messages(
         message = _numbered_message(broadcast_header, heading, chunk)
 
         if part_number == total_parts:
-            message = f"{message}\n\n{footer}".strip()
+            message = f"{message}\n{footer}".strip()
 
         messages.append(message)
 
@@ -232,12 +231,12 @@ def build_final_messages(
 
 
 def _numbered_message(broadcast_header: str, heading: str, links: list[tuple[int, str]]) -> str:
-    lines = [heading, ""]
-    for position, link in links:
-        if position != links[0][0]:
-            lines.append("")
-        lines.append(f"{position}. {_escape_html_text(link)}")
-    return _join_header_and_section(broadcast_header, "\n".join(lines))
+    numbered_links = "   ".join(
+        f"{position}. {_escape_html_text(link)}"
+        for position, link in links
+    )
+    section = "\n".join([heading, "", numbered_links])
+    return _join_header_and_section(broadcast_header, section)
 
 
 def _join_header_and_section(broadcast_header: str, section: str) -> str:
