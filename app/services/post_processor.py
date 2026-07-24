@@ -1,4 +1,4 @@
-﻿"""Text, URL extraction, cleanup, and Telegram-safe message splitting."""
+"""Text, URL extraction, cleanup, and Telegram-safe message splitting."""
 
 from __future__ import annotations
 
@@ -158,7 +158,7 @@ def build_final_messages(
     footer = (
         "viral videos milte rahenge \u2705 Stay Joined For Lifetime Free Updates \u274C "
         "Leave / Mute Mat Karna \U0001F440 More Exclusive Content Coming Daily\n\n"
-        "Join backup channel link please \U0001F64F\U0001F3FB \U0001F447\U0001F3FB\U0001F447\U0001F3FB\U0001F447\U0001F3FB\n\n"
+        "Join backup channel link please \U0001F64F\U0001F3FB \U0001F447\U0001F3FB\U0001F447\U0001F3FB\U0001F447\U0001F3FB\n"
         "https://t.me/+9XcM-efDtMRiMDU1"
     )
 
@@ -183,11 +183,10 @@ def build_final_messages(
         [
             "\U0001F4E5 Download Links",
             "",
-            "\n\n".join(
+            "   ".join(
                 f"{index}. {_escape_html_text(link)}"
                 for index, link in enumerate(links, start=1)
             ),
-            "",
             footer,
         ]
     )
